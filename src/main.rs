@@ -3,6 +3,7 @@ use axum::{Router, http::StatusCode, routing::get};
 mod config;
 mod dataset;
 mod models;
+mod vectorize;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
