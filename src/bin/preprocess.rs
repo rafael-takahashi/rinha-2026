@@ -1,6 +1,14 @@
-use std::{error::Error, fmt, fs::{self, File}, io::{BufReader, BufWriter, Write}};
 use flate2::read::GzDecoder;
-use serde::{Deserialize, Deserializer, de::{self, SeqAccess, Visitor}};
+use serde::{
+    Deserialize, Deserializer,
+    de::{self, SeqAccess, Visitor},
+};
+use std::{
+    error::Error,
+    fmt,
+    fs::{self, File},
+    io::{BufReader, BufWriter, Write},
+};
 
 #[derive(Deserialize)]
 struct Record {
@@ -29,7 +37,9 @@ impl<'de, 'a> Visitor<'de> for RecordSink<'a> {
             };
 
             for val in &rec.vector {
-                self.vectors.write_all(&val.to_le_bytes()).map_err(de::Error::custom)?;
+                self.vectors
+                    .write_all(&val.to_le_bytes())
+                    .map_err(de::Error::custom)?;
             }
 
             self.labels.write_all(&[label]).map_err(de::Error::custom)?;
@@ -38,15 +48,15 @@ impl<'de, 'a> Visitor<'de> for RecordSink<'a> {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>>{
-    let f= File::open("resources/references.json.gz")?;
+fn main() -> Result<(), Box<dyn Error>> {
+    let f = File::open("resources/references.json.gz")?;
     let gz = GzDecoder::new(f);
     let reader = BufReader::new(gz);
 
     fs::create_dir_all("data")?;
 
     let mut vectors = BufWriter::new(File::create("data/vectors.bin")?);
-    let mut labels  = BufWriter::new(File::create("data/labels.bin")?);
+    let mut labels = BufWriter::new(File::create("data/labels.bin")?);
 
     let sink = RecordSink {
         vectors: &mut vectors,
