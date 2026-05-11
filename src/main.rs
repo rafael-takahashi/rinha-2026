@@ -2,6 +2,7 @@ use axum::{Router, http::StatusCode, routing::get};
 
 mod config;
 mod dataset;
+mod knn;
 mod models;
 mod vectorize;
 

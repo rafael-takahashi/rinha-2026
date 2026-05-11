@@ -1,3 +1,6 @@
+pub const D: usize = 14;
+pub const K: usize = 5;
+
 pub const MAX_AMOUNT: f32 = 10_000.0;
 pub const MAX_INSTALLMENTS: f32 = 12.0;
 pub const AMOUNT_VS_AVG_RATIO: f32 = 10.0;
