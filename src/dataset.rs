@@ -1,31 +1,29 @@
-use bytemuck::cast_slice;
+use crate::config::D;
+use kiddo::immutable::float::kdtree::ArchivedR8ImmutableKdTree;
 use memmap2::Mmap;
-use std::fs::File;
+use std::fs::{File, read};
 
 pub struct Dataset {
-    _vectors_mmap: Mmap,
-    _labels_mmap: Mmap,
+    labels: Vec<u8>,
+    kd_tree_mmap: Mmap,
 }
 
 impl Dataset {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let vectors = File::open("data/vectors.bin")?;
-        let labels = File::open("data/labels.bin")?;
-
-        let vectors_mmap = unsafe { Mmap::map(&vectors)? };
-        let labels_mmap = unsafe { Mmap::map(&labels)? };
-
+        let labels = read("data/labels.bin")?;
+        let kd_tree_file = File::open("data/tree.rkyv")?;
+        let kd_tree_mmap = unsafe { Mmap::map(&kd_tree_file)? };
         Ok(Dataset {
-            _vectors_mmap: vectors_mmap,
-            _labels_mmap: labels_mmap,
+            labels,
+            kd_tree_mmap,
         })
     }
 
-    pub fn vectors(&self) -> &[[f32; 14]] {
-        cast_slice(&self._vectors_mmap)
+    pub fn labels(&self) -> &[u8] {
+        &self.labels
     }
 
-    pub fn labels(&self) -> &[u8] {
-        &self._labels_mmap
+    pub fn kd_tree(&self) -> &ArchivedR8ImmutableKdTree<f32, u32, D, 32> {
+        unsafe { rkyv::access_unchecked(&self.kd_tree_mmap[..]) }
     }
 }

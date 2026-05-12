@@ -14,7 +14,7 @@ pub async fn fraud_score(
     Json(payload): Json<TransactionPayload>,
 ) -> Json<FraudResponse> {
     let v = vectorize(&payload);
-    let number_of_frauds: u8 = knn(&v, dataset.vectors(), dataset.labels()).iter().sum();
+    let number_of_frauds: u8 = knn(&v, dataset.kd_tree(), dataset.labels()).iter().sum();
 
     let fraud_score = number_of_frauds as f32 / K as f32;
 
