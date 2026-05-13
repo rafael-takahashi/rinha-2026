@@ -1,3 +1,4 @@
+use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 
 use axum::{
@@ -5,6 +6,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
+use tokio::net::UnixListener;
 
 mod config;
 mod dataset;
@@ -24,7 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/fraud-score", post(handlers::fraud_score))
         .with_state(shared_state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:9999").await?;
+    let socket_path = std::env::var("SOCKET_PATH").expect("SOCKET_PATH must be set");
+    let _ = std::fs::remove_file(&socket_path);
+    let listener = UnixListener::bind(&socket_path)?;
+    std::fs::set_permissions(&socket_path, PermissionsExt::from_mode(0o777))?;
     axum::serve(listener, app).await?;
     Ok(())
 }
