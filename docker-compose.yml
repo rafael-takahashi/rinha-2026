@@ -11,21 +11,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.15"
-          memory: "40m"
+          cpus: "0.2"
+          memory: "20m"
 
   api1:
     image: rinha-2026:latest
     deploy:
       resources:
         limits:
-          cpus: "0.425"
-          memory: "155m"
+          cpus: "0.4"
+          memory: "165m"
 
   api2:
     image: rinha-2026:latest
     deploy:
       resources:
         limits:
-          cpus: "0.425"
-          memory: "155m"
+          cpus: "0.4"
+          memory: "165m"

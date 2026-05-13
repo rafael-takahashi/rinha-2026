@@ -9,6 +9,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM base AS builder
 WORKDIR /app
 COPY --from=planner /app/recipe.json recipe.json
+ENV RUSTFLAGS="-C target-cpu=native"
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo chef cook --release --recipe-path recipe.json
 COPY . .
