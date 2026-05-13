@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use axum::Json;
 use axum::extract::State;
+
+use crate::json::Json;
 
 use crate::config::{K, THRESHOLD};
 use crate::dataset::Dataset;

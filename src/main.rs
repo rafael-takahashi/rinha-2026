@@ -9,6 +9,7 @@ use axum::{
 mod config;
 mod dataset;
 mod handlers;
+mod json;
 mod knn;
 mod models;
 mod vectorize;
