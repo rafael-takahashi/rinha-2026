@@ -13,6 +13,7 @@ impl Dataset {
         let labels = read("data/labels.bin")?;
         let kd_tree_file = File::open("data/tree.rkyv")?;
         let kd_tree_mmap = unsafe { Mmap::map(&kd_tree_file)? };
+        kd_tree_mmap.advise(memmap2::Advice::WillNeed)?;
         Ok(Dataset {
             labels,
             kd_tree_mmap,
