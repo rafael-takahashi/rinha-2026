@@ -1,29 +1,46 @@
+use std::fs::{File, OpenOptions};
+use std::io::{BufWriter, Write as _};
+use std::sync::{Mutex, OnceLock};
+
 use axum::{
-    body::Bytes,
-    extract::{FromRequest, Request},
     http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-pub struct Json<T>(pub T);
+/// Opt-in capture sink. When the `CAPTURE_PATH` env var is set, every request
+/// body the handler parses is appended (raw, one per line) to that file so we
+/// can replay the real load-test query distribution through the offline oracle
+/// harness. When unset this is a cheap `&None` and adds no behavior to the
+/// serving path.
+static CAPTURE: OnceLock<Option<Mutex<BufWriter<File>>>> = OnceLock::new();
 
-impl<T, S> FromRequest<S> for Json<T>
-where
-    T: for<'de> Deserialize<'de>,
-    S: Send + Sync,
-{
-    type Rejection = StatusCode;
+fn capture_sink() -> &'static Option<Mutex<BufWriter<File>>> {
+    CAPTURE.get_or_init(|| match std::env::var("CAPTURE_PATH") {
+        Ok(path) if !path.is_empty() => OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .ok()
+            .map(|f| Mutex::new(BufWriter::new(f))),
+        _ => None,
+    })
+}
 
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let bytes = Bytes::from_request(req, state)
-            .await
-            .map_err(|_| StatusCode::BAD_REQUEST)?;
-        sonic_rs::from_slice(&bytes)
-            .map(Json)
-            .map_err(|_| StatusCode::BAD_REQUEST)
+/// Tee a raw request body to the capture sink when `CAPTURE_PATH` is set.
+/// No-op (and no allocation) otherwise.
+pub fn capture(bytes: &[u8]) {
+    if let Some(sink) = capture_sink()
+        && let Ok(mut w) = sink.lock()
+    {
+        // Bodies are compact single-line JSON, so newline framing is safe.
+        let _ = w.write_all(bytes);
+        let _ = w.write_all(b"\n");
+        let _ = w.flush();
     }
 }
+
+pub struct Json<T>(pub T);
 
 impl<T: Serialize> IntoResponse for Json<T> {
     fn into_response(self) -> Response {

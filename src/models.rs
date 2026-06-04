@@ -9,16 +9,17 @@ pub struct Transaction {
 }
 
 #[derive(Deserialize)]
-pub struct Customer {
+pub struct Customer<'a> {
     pub avg_amount: f32,
     pub tx_count_24h: u8,
-    pub known_merchants: Vec<String>,
+    #[serde(borrow)]
+    pub known_merchants: Vec<&'a str>,
 }
 
 #[derive(Deserialize)]
-pub struct Merchant {
-    pub id: String,
-    pub mcc: String,
+pub struct Merchant<'a> {
+    pub id: &'a str,
+    pub mcc: &'a str,
     pub avg_amount: f32,
 }
 
@@ -36,11 +37,12 @@ pub struct LastTransaction {
 }
 
 #[derive(Deserialize)]
-pub struct TransactionPayload {
-    pub id: String,
+pub struct TransactionPayload<'a> {
     pub transaction: Transaction,
-    pub customer: Customer,
-    pub merchant: Merchant,
+    #[serde(borrow)]
+    pub customer: Customer<'a>,
+    #[serde(borrow)]
+    pub merchant: Merchant<'a>,
     pub terminal: Terminal,
     pub last_transaction: Option<LastTransaction>,
 }

@@ -6,7 +6,7 @@ fn clamp(n: f32) -> f32 {
     n.clamp(0.0, 1.0)
 }
 
-pub fn vectorize(payload: &TransactionPayload) -> [f32; 14] {
+pub fn vectorize(payload: &TransactionPayload<'_>) -> [f32; 14] {
     let transaction = &payload.transaction;
     let customer = &payload.customer;
     let merchant = &payload.merchant;
@@ -36,7 +36,7 @@ pub fn vectorize(payload: &TransactionPayload) -> [f32; 14] {
         terminal.is_online as u8 as f32,
         terminal.card_present as u8 as f32,
         (!customer.known_merchants.contains(&merchant.id)) as u8 as f32,
-        mcc_risk(&merchant.mcc),
+        mcc_risk(merchant.mcc),
         clamp(merchant.avg_amount / MAX_MERCHANT_AVG_AMOUNT),
     ]
 }
@@ -47,9 +47,8 @@ mod tests {
     use crate::models::{Customer, Merchant, Terminal, Transaction, TransactionPayload};
     use chrono::DateTime;
 
-    fn legit_payload() -> TransactionPayload {
+    fn legit_payload() -> TransactionPayload<'static> {
         TransactionPayload {
-            id: "tx-1329056812".to_string(),
             transaction: Transaction {
                 amount: 41.12,
                 installments: 2,
@@ -60,11 +59,11 @@ mod tests {
             customer: Customer {
                 avg_amount: 82.24,
                 tx_count_24h: 3,
-                known_merchants: vec!["MERC-003".to_string(), "MERC-016".to_string()],
+                known_merchants: vec!["MERC-003", "MERC-016"],
             },
             merchant: Merchant {
-                id: "MERC-016".to_string(),
-                mcc: "5411".to_string(),
+                id: "MERC-016",
+                mcc: "5411",
                 avg_amount: 60.25,
             },
             terminal: Terminal {
@@ -76,9 +75,8 @@ mod tests {
         }
     }
 
-    fn fraud_payload() -> TransactionPayload {
+    fn fraud_payload() -> TransactionPayload<'static> {
         TransactionPayload {
-            id: "tx-3330991687".to_string(),
             transaction: Transaction {
                 amount: 9505.97,
                 installments: 10,
@@ -89,15 +87,11 @@ mod tests {
             customer: Customer {
                 avg_amount: 81.28,
                 tx_count_24h: 20,
-                known_merchants: vec![
-                    "MERC-008".to_string(),
-                    "MERC-007".to_string(),
-                    "MERC-005".to_string(),
-                ],
+                known_merchants: vec!["MERC-008", "MERC-007", "MERC-005"],
             },
             merchant: Merchant {
-                id: "MERC-068".to_string(),
-                mcc: "7802".to_string(),
+                id: "MERC-068",
+                mcc: "7802",
                 avg_amount: 54.86,
             },
             terminal: Terminal {

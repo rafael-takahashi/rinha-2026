@@ -7,9 +7,13 @@ use std::{
     io::{BufReader, BufWriter, Write},
 };
 
+use fraud_detection::config::{D, KMEANS_ITERS, KMEANS_SAMPLE, NLIST};
+use fraud_detection::ivf::IvfIndex;
+use fraud_detection::kmeans;
+
 #[derive(Deserialize)]
 struct Record {
-    vector: [f32; 14],
+    vector: [f32; D],
     label: String,
 }
 
@@ -22,9 +26,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     fs::create_dir_all("data")?;
 
-    let mut labels = BufWriter::new(File::create("data/labels.bin")?);
-    let mut points: Vec<[f32; 14]> = Vec::with_capacity(records.len());
-
+    let mut points: Vec<[f32; D]> = Vec::with_capacity(records.len());
+    let mut labels: Vec<u8> = Vec::with_capacity(records.len());
     for rec in &records {
         let label: u8 = match rec.label.as_str() {
             "fraud" => 1,
@@ -32,15 +35,30 @@ fn main() -> Result<(), Box<dyn Error>> {
             other => return Err(format!("unknown label: {other}").into()),
         };
         points.push(rec.vector);
-        labels.write_all(&[label])?;
+        labels.push(label);
     }
 
-    labels.flush()?;
+    // labels.bin + KD-tree: consumed only by the offline oracle harness.
+    let mut labels_file = BufWriter::new(File::create("data/labels.bin")?);
+    labels_file.write_all(&labels)?;
+    labels_file.flush()?;
 
-    let tree: ImmutableKdTree<f32, u32, 14, 32> = ImmutableKdTree::new_from_slice(&points);
+    let tree: ImmutableKdTree<f32, u32, D, 32> = ImmutableKdTree::new_from_slice(&points);
+    let tree_bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&tree)?;
+    fs::write("data/tree.rkyv", tree_bytes)?;
 
-    let archived_bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&tree)?;
-    fs::write("data/tree.rkyv", archived_bytes)?;
+    // IVF-f16 index: the production runtime index.
+    println!("training k-means: nlist={NLIST}, sample={KMEANS_SAMPLE}, iters={KMEANS_ITERS}");
+    let centroids = kmeans::train(&points, NLIST, KMEANS_SAMPLE, KMEANS_ITERS);
+    println!("assigning {} points to cells", points.len());
+    let assignments = kmeans::assign_all(&points, &centroids, NLIST);
+    let ivf = IvfIndex::build(&points, &labels, &centroids, &assignments);
+    let ivf_bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&ivf)?;
+    fs::write("data/ivf.rkyv", &ivf_bytes)?;
+    println!(
+        "wrote data/ivf.rkyv ({:.1} MiB)",
+        ivf_bytes.len() as f64 / (1024.0 * 1024.0)
+    );
 
     Ok(())
 }
